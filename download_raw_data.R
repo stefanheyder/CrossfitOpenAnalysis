@@ -29,5 +29,5 @@ for(gender in c("male", "female")) {
         results[[page]] <- fromJSON(txt = paste(path, page))
     }
     close(pb)
-    saveRDS(results, paste("raw_data/", format(Sys.time(), "%Y-%m-%d_%H:%M:%S"), gender, "_raw_data.Rds", sep = ""))
+    saveRDS(results, paste("raw_data/", format(Sys.time(), "%Y-%m-%d_%H:%M:%S"), "_", gender, "_raw_data.Rds", sep = ""))
 }
