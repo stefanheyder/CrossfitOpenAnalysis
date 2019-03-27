@@ -1,4 +1,9 @@
 clean_data
 raw_data
+cache
+crossfit_cache
+crossfit_files
+figure
 
+crossfit.md
 crossfit.html

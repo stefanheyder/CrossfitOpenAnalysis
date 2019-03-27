@@ -1,33 +1,116 @@
 ---
-title: Crossfit Open 2019 --- an Analysis
-author: Stefan Heyder
-date: March 26, 2019
-output: html_document
+title: "Crossfit Open 2019 --- an Analysis"
+author: "Stefan Heyder"
+date: '`r Sys.Date()`'
+output: 
+  md_document:
+    variant: markdown_github
 ---
-```{r}
+```{r, echo = F, message = F, warning = F}
 library(tidyverse)
-```
+library(formatR)
+library(knitr)
 
+my.id <- 1524808
+friend.id <- 1323911
+
+# opts_chunk$set(tidy = T)
+```
 
 # The Crossfit Open
 
+The Crossfit Open is a yearly competition for crossfitters around the globe to compete against each other.
+The open spans five weeks, in 2019 it took place from February 21st until March 25th. 
+Each Thursday night, a new workout is announced and athletes must complete the workout and submit their scores up to the following Monday.
+The workouts are labeled by a scheme containing the current year and the number of the workout. Thus the workouts for 2019 are labeled by 19.1, 19.2 up to 19.5.
+There are two ways to complete the workouts: If you are feeling strong you can try the "As Prescribed" (RX) version, otherwise there always an option to complete the workout scaled (lower weights and sometimes easier movements).
+
 # Data
-```{r}
-crossfit.open <- read_csv("clean_data/2019-03-26_16:21:24_clean_data.csv") %>%
-    mutate(WOD = as.character(WOD)) %>%
-    filter(Repetitions > 0) # Remove scaled
+```{r, message = F, warning = F}
+crossfit.open.complete <- rbind(read_csv("clean_data/ 2019-03-27_11:19:38_male_raw_data.csv"), read_csv("clean_data/ 2019-03-27_11:46:59_female_raw_data.csv")) %>%
+    mutate(WOD = as.factor(WOD)) 
+crosfit.open <- crossfit.open.complete %>%
+    filter(Scaled == FALSE)
 ```
+This data was scraped from the official Crossfit Games website. If you are interested in how I downloaded and prepared the data, you can have a look at my [repository on github](https://github.com/stefanheyder/CrossfitOpenAnalysis).
+For simplicity sake, we will exclude scaled competitors.
+
+Let's have quick look at the data:
+
+```{r}
+crossfit.open
+```
+
+Each row contains information about a finished workout from an athlete (identified by both name and an internal id).
+In the 2019 Open there were two types of workouts:
+
+- As Many Repetitions As Possible (AMRAP)
+- For Time with a time cap
+
+Scoring for AMRAP workouts is easy: The athlete that completed more repetitions wins.
+Scoring For Time workouts is a little bit trickier, as there are two possible scores: Either the athlete was fast enough to finish the workout in the given time frame (e.g. before the time cap) or not. In the first case, the athletes score is his time and in the second case the amount of repetitions the athlete performed before the time cap.
+
+Let's have a look at some numbers. How many men and women did compete in the open?
+```{r, }
+(total.competitors <- crossfit.open %>% 
+    select(Athlete.Id, Gender) %>%
+    distinct() %>%
+    group_by(Gender) %>%
+    summarize(Competitors = n()))
+```
+How many competitors did all workouts RX?
+```{r, cache = T }
+(all.rx.competitors <- crossfit.open %>%
+    select(Athlete.Id, Gender) %>%
+    group_by(Athlete.Id, Gender) %>%
+    summarize(RX.Workouts = n()) %>%
+    filter(RX.Workouts == 5) %>%
+    group_by(Gender) %>%
+    summarize(All.RXd = n()))
+```
+And percentage wise?
+
+```{r, }
+inner_join(total.competitors, all.rx.competitors) %>%
+    mutate(Percentage.All.RX = All.RXd / Competitors * 100) %>%
+    select(Gender, Percentage.All.RX)
+```
+So in total there are more men competing in the open and a higher percentage of those competing did all workouts as prescribed.
+
 
 # 19.1
 
+We will start this series with an analysis of the first workout, 19.1.
+```{r, }
+wod.19.1 <- crossfit.open %>% filter(WOD == '19.1')
+```
+The RX workout demands the following:
 
-This workout is easy to analyze, as there is only one metric determining your score: How many repetitions of wall balls and rowing did you accomplish in the given time cap? 
-We will thus start our analysis with a density plot of the repetition for 19.1:
+Complete as many rounds as possible in 15 minutes of:
+
+- 19 wall-ball shots 
+- 19 cal. row
+
+This is an AMRAP workout and thus easy to score.
+
+Let's start with looking at a Histogram of our data.
+```{r, }
+ggplot(wod.19.1, aes(x = Repetitions, fill = Gender)) +
+    geom_histogram(alpha = 0.2, position = "identity") +
+    scale_color_manual(values = c("red", "blue"))
+
+```
+
+This shows us a crude estimate of the distribution of scores. 
+One could now play around with binwidths to get a clearer picture of the situation.
+But we have a pretty big dataset, so how about some smoothing? 
+To this end, we will use a kernel density estimator, which **ggplot** provides through its **geom_density**.
 
 ```{r}
-(plot.19.1 <- crossfit.open %>%
-    filter(WOD == '19.1') %>%
-ggplot(aes(x = Repetitions)) + geom_density()
+(plot.19.1 <- wod.19.1 %>%
+ggplot(aes(x = Repetitions, fill = Gender, color = Gender)) + 
+    geom_density(alpha = 0.2) + 
+    scale_color_manual(values = c("red", "blue"))
 )
 ```
 
@@ -40,10 +123,29 @@ Let's add indicators for these rounds to our plot
 ```{r}
 rounds <- rbind(tibble(reps = 38 * 1:10, Rounds = "Full"), tibble(reps =  19 + 38 * 1:10, Rounds = "Half"))
 plot.19.1 +
-    geom_vline(data = rounds, aes(xintercept = reps, color = Rounds), linetype = 2, alpha = 0.4)
+    geom_vline(data = rounds, aes(xintercept = reps, linetype = Rounds), alpha = 0.4) +
+    scale_linetype_manual(values = c(5,3))
 
 ```
 
+As you can see, those peaks align perfectly with the ends of wall-balls or rowing!
 
+# Individual performance
+Now with every open workout you perform there is always one question: If I had done x-amount of repetitions more, how many places (or percentiles) better would I have ended up?
+
+As I competed together with a friend of mine, I will now show how good we were in 19.1. We were both competing in the male RX divison.
+
+```{r}
+my.score <- wod.19.1 %>% filter(Athlete.Id == my.id) %>% pull(Repetitions)
+friend.score <- wod.19.1 %>% filter(Athlete.Id == friend.id) %>% pull(Repetitions)
+our.score <- tibble(Who = c("Me", "Friend"), Score = c(my.score, friend.score))
+
+wod.19.1 %>%
+    filter(Gender == "male") %>%
+    ggplot(aes(x = Repetitions)) + 
+    geom_density(alpha = 0.2, color = "blue", fill = "blue") +
+    geom_vline(data = our.score, aes(xintercept = Score, linetype = Who), alpha = 0.3) +
+    scale_linetype_manual(values = c(4,5)) 
+```
 
 
