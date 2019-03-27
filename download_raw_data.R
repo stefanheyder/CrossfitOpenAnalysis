@@ -1,10 +1,19 @@
 library(jsonlite)
 library(tcltk)
 
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) == 0) {
+    year <- format(Sys.time(), "%Y")
+} else {
+    year <- args[1]
+}
+
 paths <- c(
-    male = "https://games.crossfit.com/competitions/api/v1/competitions/open/2019/leaderboards?country_champions=0&division=1&sort=0&scaled=0&page=",
-    female = "https://games.crossfit.com/competitions/api/v1/competitions/open/2019/leaderboards?country_champions=0&division=1&sort=0&scaled=0&page="
+    male = paste("https://games.crossfit.com/competitions/api/v1/competitions/open/", year, "/leaderboards?country_champions=0&division=1&sort=0&scaled=0&page=", sep = "" ),
+    female = paste("https://games.crossfit.com/competitions/api/v1/competitions/open/", year, "/leaderboards?country_champions=0&division=2&sort=0&scaled=0&page=", sep = "")
 )
+
 
 for(gender in c("male", "female")) {
 
