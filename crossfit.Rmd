@@ -1,0 +1,49 @@
+---
+title: Crossfit Open 2019 --- an Analysis
+author: Stefan Heyder
+date: March 26, 2019
+output: html_document
+---
+```{r}
+library(tidyverse)
+```
+
+
+# The Crossfit Open
+
+# Data
+```{r}
+crossfit.open <- read_csv("clean_data/2019-03-26_16:21:24_clean_data.csv") %>%
+    mutate(WOD = as.character(WOD)) %>%
+    filter(Repetitions > 0) # Remove scaled
+```
+
+# 19.1
+
+
+This workout is easy to analyze, as there is only one metric determining your score: How many repetitions of wall balls and rowing did you accomplish in the given time cap? 
+We will thus start our analysis with a density plot of the repetition for 19.1:
+
+```{r}
+(plot.19.1 <- crossfit.open %>%
+    filter(WOD == '19.1') %>%
+ggplot(aes(x = Repetitions)) + geom_density()
+)
+```
+
+There seem to be many modes for this distribution. 
+One possible reason could be the different rounds, as athletes may push at the end of a workout to "finish the round" they are currently in. 
+One round consists of 19 wall-ball shots and 19 kcal on the rower, thus we'd expect a peak every 38 Repetitions.
+I'll also add some lines for every half round, after the athlete has finished their set of 19 wall-balls.
+Let's add indicators for these rounds to our plot
+
+```{r}
+rounds <- rbind(tibble(reps = 38 * 1:10, Rounds = "Full"), tibble(reps =  19 + 38 * 1:10, Rounds = "Half"))
+plot.19.1 +
+    geom_vline(data = rounds, aes(xintercept = reps, color = Rounds), linetype = 2, alpha = 0.4)
+
+```
+
+
+
+
